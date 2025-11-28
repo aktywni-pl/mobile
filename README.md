@@ -4,5 +4,17 @@ Aplikacja mobilna inspirowana Stravą — tworzona w Kotlinie.
 
 
 ## ️ Opis
-Celem projektu jest stworzenie aplikacji do śledzenia aktywności sportowych (bieganie, jazda na rowerze, marsze itp.), z możliwością rejestrowania tras GPS, statystyk oraz rywalizacji ze znajomymi.
-#Test zmian
+📂 Project Repositories and 👥 Team
+
+The Aktywni-pl project consists of three separate repositories:
+
+    📱 Mobile App (Kotlin)
+    🌐 Web App - Admin Panel (Vue.js) 
+    🛠️ Backend/API (Laravel + MariaDB)
+
+📌 Technologies
+
+    Mobile App: Kotlin + Jetpack Compose
+    Backend (API): PHP + Laravel
+    Web App: Vue 3 + TypeScript + Bootstrap
+    Database: MariaDB
