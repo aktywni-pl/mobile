@@ -1,21 +1,32 @@
 package com.example.mobile
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mobile.network.LoginRequest
+import com.example.mobile.network.RetrofitInstance
+import com.example.mobile.network.UserSession
+import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -53,18 +64,42 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                // TODO : API endpoint
-                if (email.isNotEmpty() && password.isNotEmpty()) {
-                    onLoginSuccess()
-                } else {
-                    errorMessage = "Wprowadź dane!"
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Zaloguj się")
+        if (isLoading) {
+            CircularProgressIndicator()
+        } else {
+            Button(
+                onClick = {
+                    if (email.isNotEmpty() && password.isNotEmpty()) {
+                        isLoading = true
+                        errorMessage = ""
+
+
+                        scope.launch {
+                            try {
+                                val response = RetrofitInstance.api.login(LoginRequest(email, password))
+
+
+                                UserSession.token = response.token
+                                UserSession.userId = response.id
+
+                                Toast.makeText(context, "Zalogowano: ${response.email}", Toast.LENGTH_SHORT).show()
+                                onLoginSuccess()
+                            } catch (e: Exception) {
+
+                                errorMessage = "Błąd logowania: ${e.message}"
+
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    } else {
+                        errorMessage = "Wprowadź dane!"
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Zaloguj się")
+            }
         }
 
         TextButton(onClick = { /* TODO Register navigation */ }) {

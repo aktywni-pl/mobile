@@ -1,11 +1,13 @@
 package com.example.mobile
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.mobile.ui.theme.MobileTheme
 import org.osmdroid.config.Configuration
@@ -20,6 +22,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MobileTheme {
 
+                val context = LocalContext.current
+
                 var isLoggedIn by remember { mutableStateOf(false) }
 
                 if (isLoggedIn) {
@@ -28,6 +32,9 @@ class MainActivity : ComponentActivity() {
                     LoginScreen(
                         onLoginSuccess = {
                             isLoggedIn = true
+                        },
+                        onNavigateToRegister = {
+                            Toast.makeText(context, "W budowie", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
