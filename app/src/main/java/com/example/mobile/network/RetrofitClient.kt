@@ -3,12 +3,17 @@ package com.example.mobile.network
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 
 interface ApiService {
     @POST("api/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
+
+    @GET("api/activities")
+    suspend fun getActivities(@Header("Authorization") token: String): List<Activity>
 }
 
 // Singleton
