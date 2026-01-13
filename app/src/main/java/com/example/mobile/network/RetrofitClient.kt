@@ -6,6 +6,8 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 
 
 interface ApiService {
@@ -14,6 +16,25 @@ interface ApiService {
 
     @GET("api/activities")
     suspend fun getActivities(@Header("Authorization") token: String): List<Activity>
+
+    @GET("api/activities/{id}")
+    suspend fun getActivity(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): Activity
+
+    @POST("api/activities")
+    suspend fun createActivity(
+        @Header("Authorization") token: String,
+        @Body request: CreateActivityRequest
+    ): ActivityResponse
+
+    @PUT("api/activities/{id}/track")
+    suspend fun uploadTrack(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int,
+        @Body body: TrackRequest
+    ): retrofit2.Response<Unit>
 }
 
 // Singleton
