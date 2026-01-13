@@ -25,7 +25,7 @@ data class Activity(
     val name: String,
     val type: String,
     val distance_km: Double,
-    val duration_min: Int,
+    val duration_min: Double,
     val started_at: String
 )
 

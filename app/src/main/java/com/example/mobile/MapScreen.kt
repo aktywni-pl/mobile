@@ -20,14 +20,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.example.mobile.network.CreateActivityRequest
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.TrackPoint
 import com.example.mobile.network.UserSession
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
@@ -35,7 +36,6 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import java.time.LocalDateTime
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -47,8 +47,38 @@ fun MapScreen() {
     var routePoints = remember { mutableStateListOf<GeoPoint>() }
     var trackData = remember { mutableStateListOf<TrackPoint>() }
 
+    var currentDistanceKm by remember { mutableStateOf(0.0) }
+    var currentDurationStr by remember { mutableStateOf("00:00") }
+    var currentPaceStr by remember { mutableStateOf("--:--") }
+
+    var runStartTime by remember { mutableStateOf<java.time.Instant?>(null) }
+
     val locationManager = remember { context.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
     var mapView by remember { mutableStateOf<MapView?>(null) }
+
+    LaunchedEffect(isRecording, runStartTime) {
+        if (isRecording && runStartTime != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            while (isRecording) {
+                val now = java.time.Instant.now()
+                val durationSeconds = java.time.Duration.between(runStartTime, now).seconds
+
+                val mm = durationSeconds / 60
+                val ss = durationSeconds % 60
+                currentDurationStr = String.format("%02d:%02d", mm, ss)
+
+                if (currentDistanceKm > 0.05) {
+                    val paceSeconds = durationSeconds / currentDistanceKm
+                    val paceMin = (paceSeconds / 60).toInt()
+                    val paceSec = (paceSeconds % 60).toInt()
+                    currentPaceStr = String.format("%d:%02d /km", paceMin, paceSec)
+                } else {
+                    currentPaceStr = "--:--"
+                }
+
+                delay(1000L)
+            }
+        }
+    }
 
     val locationListener = remember {
         object : LocationListener {
@@ -59,34 +89,37 @@ fun MapScreen() {
 
                     if (lat == 0.0 && lon == 0.0) return
 
-                    val point = org.osmdroid.util.GeoPoint(lat, lon)
-                    routePoints.add(point)
-
-                    val now = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    val geoPoint = GeoPoint(lat, lon)
+                    val nowStr = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                         java.time.Instant.now().toString()
-                    } else {
-                        java.util.Date().toString()
+                    } else { java.util.Date().toString() }
+
+                    routePoints.add(geoPoint)
+                    trackData.add(TrackPoint(lat, lon, timestamp = nowStr))
+
+                    var distMeters = 0.0
+                    if (trackData.size > 1) {
+                        for (i in 0 until trackData.size - 1) {
+                            val p1 = trackData[i]
+                            val p2 = trackData[i+1]
+                            val res = FloatArray(1)
+                            android.location.Location.distanceBetween(p1.lat, p1.lon, p2.lat, p2.lon, res)
+                            distMeters += res[0]
+                        }
                     }
+                    currentDistanceKm = distMeters / 1000.0
 
-
-                    trackData.add(
-                        com.example.mobile.network.TrackPoint(
-                            lat = lat,
-                            lon = lon,
-                            timestamp = now
-                        )
-                    )
-
-                    mapView?.overlays?.filterIsInstance<org.osmdroid.views.overlay.Polyline>()?.firstOrNull()?.let { line ->
-                        line.addPoint(point)
+                    mapView?.overlays?.filterIsInstance<Polyline>()?.firstOrNull()?.let { line ->
+                        line.addPoint(geoPoint)
                     } ?: run {
-                        val line = org.osmdroid.views.overlay.Polyline()
-
+                        val line = Polyline()
                         line.outlinePaint.color = android.graphics.Color.RED
                         line.outlinePaint.strokeWidth = 15f
-                        line.addPoint(point)
+                        line.addPoint(geoPoint)
                         mapView?.overlays?.add(line)
                     }
+
+                    mapView?.controller?.animateTo(geoPoint)
                     mapView?.invalidate()
                 }
             }
@@ -100,9 +133,7 @@ fun MapScreen() {
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasPermission = isGranted
-    }
+    ) { isGranted -> hasPermission = isGranted }
 
     fun startRecording() {
         if (!hasPermission) {
@@ -111,6 +142,13 @@ fun MapScreen() {
         }
         routePoints.clear()
         trackData.clear()
+        currentDistanceKm = 0.0
+        currentDurationStr = "00:00"
+        currentPaceStr = "--:--"
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            runStartTime = java.time.Instant.now()
+        }
 
         mapView?.overlays?.removeIf { it is Polyline }
         mapView?.invalidate()
@@ -127,42 +165,20 @@ fun MapScreen() {
         } catch (e: Exception) { e.printStackTrace() }
 
         val pointCount = trackData.size
-        var localDistanceMeters = 0.0
+        val distanceInKm = currentDistanceKm
 
-        if (pointCount > 1) {
-            for (i in 0 until pointCount - 1) {
-                val p1 = trackData[i]
-                val p2 = trackData[i+1]
-                val results = FloatArray(1)
-                android.location.Location.distanceBetween(
-                    p1.lat, p1.lon,
-                    p2.lat, p2.lon,
-                    results
-                )
-                localDistanceMeters += results[0]
-            }
+        var durationSecondsTotal = 0L
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && runStartTime != null) {
+            val now = java.time.Instant.now()
+            durationSecondsTotal = java.time.Duration.between(runStartTime, now).seconds
         }
-        val distanceInKm = localDistanceMeters / 1000.0
 
-        var durationMinutes = 0.0
-        if (pointCount >= 2) {
-            val startTimeStr = trackData.first().timestamp
-            val endTimeStr = trackData.last().timestamp
-
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                try {
-                    val start = java.time.Instant.parse(startTimeStr)
-                    val end = java.time.Instant.parse(endTimeStr)
-                    val durationSeconds = java.time.Duration.between(start, end).seconds
-                    durationMinutes = durationSeconds / 60.0
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-        }
+        val durationMinutes = durationSecondsTotal / 60.0
 
         if (pointCount < 2) {
             Toast.makeText(context, "Za mało danych GPS.", Toast.LENGTH_SHORT).show()
+            isRecording = false
+            runStartTime = null
             return
         }
 
@@ -171,13 +187,13 @@ fun MapScreen() {
         scope.launch {
             try {
                 val token = UserSession.token ?: return@launch
-                val startTime = trackData.firstOrNull()?.timestamp ?: java.time.Instant.now().toString()
+                val startIso = trackData.firstOrNull()?.timestamp ?: java.time.Instant.now().toString()
 
                 val createReq = com.example.mobile.network.CreateActivityRequest(
                     user_id = UserSession.userId ?: 1,
                     name = "Trening Mobile",
                     type = "run",
-                    started_at = startTime,
+                    started_at = startIso,
                     distance_km = distanceInKm,
                     duration_min = durationMinutes
                 )
@@ -189,26 +205,38 @@ fun MapScreen() {
                 RetrofitInstance.api.uploadTrack("Bearer $token", activityId, requestBody)
 
                 withContext(Dispatchers.Main) {
+                    val mm = durationSecondsTotal / 60
+                    val ss = durationSecondsTotal % 60
+                    val timeReadable = String.format("%02d:%02d", mm, ss)
+
                     val distStr = String.format("%.2f", distanceInKm)
-                    val timeStr = String.format("%.2f", durationMinutes)
-                    Toast.makeText(
-                        context,
-                        "Sukces! $distStr km | $timeStr min",
-                        Toast.LENGTH_LONG
-                    ).show()
+
+                    Toast.makeText(context, "Zapisano! $distStr km | Czas: $timeReadable", Toast.LENGTH_LONG).show()
+
                     trackData.clear()
+                    routePoints.clear()
+                    currentDistanceKm = 0.0
+                    currentDurationStr = "00:00"
+                    currentPaceStr = "--:--"
+                    runStartTime = null
+
+                    mapView?.overlays?.removeIf { it is Polyline }
+                    mapView?.invalidate()
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Błąd wysyłania: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, "Błąd: ${e.message}", Toast.LENGTH_LONG).show()
+                    isRecording = false
+                    runStartTime = null
                 }
             }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -228,6 +256,35 @@ fun MapScreen() {
             }
         )
 
+        if (isRecording) {
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 40.dp, start = 16.dp, end = 16.dp)
+                    .fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("CZAS", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(currentDurationStr, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("DYSTANS", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(String.format("%.2f km", currentDistanceKm), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("TEMPO", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        Text(currentPaceStr, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).padding(32.dp)
         ) {
@@ -246,7 +303,7 @@ fun MapScreen() {
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
-                    Text("STOP (ZAPISZ ${trackData.size} pkt)")
+                    Text("STOP (ZAPISZ)")
                 }
             }
         }
