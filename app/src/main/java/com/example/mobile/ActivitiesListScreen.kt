@@ -119,9 +119,18 @@ fun ActivityItem(activity: Activity) {
                     Text(text = activity.type.uppercase(), style = MaterialTheme.typography.bodyMedium)
                 }
 
-                Text(text = "${activity.distance_km} km", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    text = String.format("%.2f km", activity.distance_km),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
 
-                Text(text = "${activity.duration_min} min", style = MaterialTheme.typography.bodyMedium)
+                val totalSeconds = (activity.duration_min * 60).toLong()
+                val mm = totalSeconds / 60
+                val ss = totalSeconds % 60
+                val timeFormatted = String.format("%d:%02d min", mm, ss)
+
+                Text(text = timeFormatted, style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
