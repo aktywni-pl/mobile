@@ -28,3 +28,27 @@ data class Activity(
     val duration_min: Int,
     val started_at: String
 )
+
+data class ActivityResponse(
+    val id: Int
+)
+
+data class CreateActivityRequest(
+    val user_id: Int,
+    val name: String,
+    val type: String,
+    val started_at: String,
+    val distance_km: Double = 0.0,
+    val duration_min: Double = 0.0
+)
+
+data class TrackRequest(
+    val points: List<TrackPoint>
+)
+
+data class TrackPoint(
+    val lat: Double,
+    val lon: Double,
+    val timestamp: String
+)
+
