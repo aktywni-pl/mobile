@@ -52,3 +52,7 @@ data class TrackPoint(
     val timestamp: String
 )
 
+data class TrackResponse(
+    val activity_id: Int,
+    val points: List<TrackPoint>
+)

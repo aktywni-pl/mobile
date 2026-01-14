@@ -23,6 +23,12 @@ interface ApiService {
         @Path("id") id: Int
     ): Activity
 
+    @GET("api/activities/{id}/track")
+    suspend fun getActivityTrack(
+        @Header("Authorization") token: String,
+        @Path("id") id: Int
+    ): TrackResponse
+
     @POST("api/activities")
     suspend fun createActivity(
         @Header("Authorization") token: String,
