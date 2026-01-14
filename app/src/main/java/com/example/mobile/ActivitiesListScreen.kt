@@ -18,9 +18,10 @@ import androidx.compose.ui.unit.dp
 import com.example.mobile.network.Activity
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
+import androidx.compose.foundation.clickable
 
 @Composable
-fun ActivitiesListScreen() {
+fun ActivitiesListScreen(onActivityClick: (Int) -> Unit) {
     val context = LocalContext.current
     var activities by remember { mutableStateOf<List<Activity>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -77,7 +78,7 @@ fun ActivitiesListScreen() {
         } else {
             LazyColumn {
                 items(activities) { activity ->
-                    ActivityItem(activity)
+                    ActivityItem(activity, onClick = { onActivityClick(activity.id) })
                 }
             }
         }
@@ -85,11 +86,12 @@ fun ActivitiesListScreen() {
 }
 
 @Composable
-fun ActivityItem(activity: Activity) {
+fun ActivityItem(activity: Activity, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

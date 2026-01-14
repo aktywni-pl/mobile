@@ -29,8 +29,7 @@ class MainActivity : ComponentActivity() {
             MobileTheme {
                 val context = LocalContext.current
                 var isLoggedIn by remember { mutableStateOf(false) }
-
-                // 0 = Lista, 1 = Mapa
+                var selectedActivityId by remember { mutableStateOf<Int?>(null) }
                 var selectedTab by remember { mutableIntStateOf(0) }
 
                 if (!isLoggedIn) {
@@ -38,49 +37,63 @@ class MainActivity : ComponentActivity() {
                         onLoginSuccess = {
                             isLoggedIn = true
                             selectedTab = 0
+                            selectedActivityId = null
                         },
                         onNavigateToRegister = {
                             Toast.makeText(context, "Rejestracja wyłączona", Toast.LENGTH_SHORT).show()
                         }
                     )
                 } else {
-                    Scaffold(
-                        topBar = {
-                            CenterAlignedTopAppBar(
-                                title = { Text("Mini Strava") },
-                                actions = {
-                                    IconButton(onClick = {
-                                        UserSession.token = null
-                                        isLoggedIn = false
-                                        Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
-                                    }) {
-                                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
-                                    }
-                                }
-                            )
-                        },
-                        bottomBar = {
-                            NavigationBar {
-                                NavigationBarItem(
-                                    icon = { Icon(Icons.Default.Home, "Start") },
-                                    label = { Text("Treningi") },
-                                    selected = selectedTab == 0,
-                                    onClick = { selectedTab = 0 }
-                                )
-                                NavigationBarItem(
-                                    icon = { Icon(Icons.Default.Place, "Mapa") },
-                                    label = { Text("Nagraj") },
-                                    selected = selectedTab == 1,
-                                    onClick = { selectedTab = 1 }
-                                )
+                    if (selectedActivityId != null) {
+                        ActivityDetailsScreen(
+                            activityId = selectedActivityId!!,
+                            onBack = {
+                                selectedActivityId = null
                             }
-                        }
-                    ) { innerPadding ->
-                        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                            if (selectedTab == 0) {
-                                ActivitiesListScreen()
-                            } else {
-                                MapScreen()
+                        )
+                    } else {
+                        Scaffold(
+                            topBar = {
+                                CenterAlignedTopAppBar(
+                                    title = { Text("Mini Strava") },
+                                    actions = {
+                                        IconButton(onClick = {
+                                            UserSession.token = null
+                                            isLoggedIn = false
+                                            Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
+                                        }) {
+                                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
+                                        }
+                                    }
+                                )
+                            },
+                            bottomBar = {
+                                NavigationBar {
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Home, "Start") },
+                                        label = { Text("Treningi") },
+                                        selected = selectedTab == 0,
+                                        onClick = { selectedTab = 0 }
+                                    )
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Place, "Mapa") },
+                                        label = { Text("Nagraj") },
+                                        selected = selectedTab == 1,
+                                        onClick = { selectedTab = 1 }
+                                    )
+                                }
+                            }
+                        ) { innerPadding ->
+                            Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+                                if (selectedTab == 0) {
+                                    ActivitiesListScreen(
+                                        onActivityClick = { clickedId ->
+                                            selectedActivityId = clickedId
+                                        }
+                                    )
+                                } else {
+                                    MapScreen()
+                                }
                             }
                         }
                     }
