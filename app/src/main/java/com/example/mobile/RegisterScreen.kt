@@ -22,6 +22,7 @@ import retrofit2.HttpException
 fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -59,6 +60,18 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Powtórz hasło") },
+            visualTransformation = PasswordVisualTransformation(),
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword
+        )
+
         if (errorMessage.isNotEmpty()) {
             Text(text = errorMessage, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
@@ -70,33 +83,38 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
         } else {
             Button(
                 onClick = {
-                    if (email.isNotEmpty() && password.isNotEmpty()) {
-                        isLoading = true
-                        errorMessage = ""
+                    if (email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
 
-                        scope.launch {
-                            try {
-                                val request = RegisterRequest(email, password)
-                                val response = RetrofitInstance.api.register(request)
+                        if (password == confirmPassword) {
+                            isLoading = true
+                            errorMessage = ""
 
-                                UserSession.token = response.token
-                                UserSession.userId = response.id
+                            scope.launch {
+                                try {
+                                    val request = RegisterRequest(email, password, confirmPassword)
+                                    val response = RetrofitInstance.api.register(request)
 
-                                Toast.makeText(context, "Zarejestrowano pomyślnie!", Toast.LENGTH_SHORT).show()
-                                onRegisterSuccess()
+                                    UserSession.token = response.token
+                                    UserSession.userId = response.id
+                                    UserSession.email = email
 
-                            } catch (e: HttpException) {
-                                if (e.code() == 409) {
-                                    errorMessage = "Ten email jest już zajęty"
-                                } else {
-                                    val errorBody = e.response()?.errorBody()?.string()
-                                    errorMessage = "Błąd rejestracji: $errorBody"
+                                    Toast.makeText(context, "Zarejestrowano pomyślnie!", Toast.LENGTH_SHORT).show()
+                                    onRegisterSuccess()
+
+                                } catch (e: HttpException) {
+                                    isLoading = false
+                                    if (e.code() == 409) {
+                                        errorMessage = "Ten email jest już zajęty!"
+                                    } else {
+                                        errorMessage = "Błąd rejestracji (Kod: ${e.code()})"
+                                    }
+                                } catch (e: Exception) {
+                                    isLoading = false
+                                    errorMessage = "Błąd: ${e.message}"
                                 }
-                            } catch (e: Exception) {
-                                errorMessage = "Błąd: ${e.message}"
-                            } finally {
-                                isLoading = false
                             }
+                        } else {
+                            errorMessage = "Hasła nie są identyczne!"
                         }
                     } else {
                         errorMessage = "Wypełnij wszystkie pola!"

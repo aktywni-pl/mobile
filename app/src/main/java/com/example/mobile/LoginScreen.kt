@@ -81,6 +81,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
 
                                 UserSession.token = response.token
                                 UserSession.userId = response.id
+                                UserSession.email = email
 
                                 Toast.makeText(context, "Zalogowano: ${response.email}", Toast.LENGTH_SHORT).show()
                                 onLoginSuccess()
