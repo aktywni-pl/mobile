@@ -110,22 +110,43 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                             },
                             update = { map ->
                                 map.overlays.clear()
-                                if (trackPoints.isNotEmpty()) {
-                                    val geoPoints = trackPoints.map { GeoPoint(it.lat, it.lon) }
 
-                                    val line = Polyline()
-                                    line.setPoints(geoPoints)
-                                    line.outlinePaint.color = android.graphics.Color.parseColor("#FF5722")
-                                    line.outlinePaint.strokeWidth = 12f
-                                    line.outlinePaint.strokeJoin = Paint.Join.ROUND
-                                    line.outlinePaint.strokeCap = Paint.Cap.ROUND
-                                    map.overlays.add(line)
+                                if (trackPoints.isNotEmpty()) {
+                                    val startGeo = GeoPoint(trackPoints.first().lat, trackPoints.first().lon)
+
+                                    // Ustawiamy styl linii
+                                    fun createPolyline(): Polyline {
+                                        return Polyline().apply {
+                                            outlinePaint.color = android.graphics.Color.parseColor("#FF5722")
+                                            outlinePaint.strokeWidth = 12f
+                                            outlinePaint.strokeJoin = Paint.Join.ROUND
+                                            outlinePaint.strokeCap = Paint.Cap.ROUND
+                                        }
+                                    }
+
+                                    var currentPolyline = createPolyline()
+                                    currentPolyline.addPoint(startGeo)
+
+                                    for (i in 0 until trackPoints.size - 1) {
+                                        val p1 = trackPoints[i]
+                                        val p2 = trackPoints[i+1]
+
+                                        val g1 = GeoPoint(p1.lat, p1.lon)
+                                        val g2 = GeoPoint(p2.lat, p2.lon)
+
+                                        if (g1.distanceToAsDouble(g2) > 50) {
+                                            map.overlays.add(currentPolyline)
+                                            currentPolyline = createPolyline()
+                                            currentPolyline.addPoint(g2)
+                                        } else {
+                                            currentPolyline.addPoint(g2)
+                                        }
+                                    }
+                                    map.overlays.add(currentPolyline)
 
                                     map.post {
-                                        if (geoPoints.isNotEmpty()) {
-                                            map.controller.setZoom(16.0)
-                                            map.controller.setCenter(geoPoints.first())
-                                        }
+                                        map.controller.setZoom(16.0)
+                                        map.controller.setCenter(startGeo)
                                     }
                                 }
                                 map.invalidate()
@@ -150,7 +171,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                             verticalArrangement = Arrangement.SpaceAround
                         ) {
 
-                            // Główny licznik (Dystans) - Centrowany
                             Column(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally
@@ -163,7 +183,7 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                 )
                                 Text(
                                     text = String.format("%.2f km", act.distance_km),
-                                    style = MaterialTheme.typography.displayMedium, // Bardzo duża czcionka
+                                    style = MaterialTheme.typography.displayMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
                                 )
