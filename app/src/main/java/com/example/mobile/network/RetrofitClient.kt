@@ -62,4 +62,5 @@ object RetrofitInstance {
 object UserSession {
     var token: String? = null
     var userId: Int? = null
+    var email: String? = null
 }

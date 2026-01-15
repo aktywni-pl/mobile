@@ -8,8 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,7 +23,6 @@ import org.osmdroid.config.Configuration
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         Configuration.getInstance().userAgentValue = packageName
 
         setContent {
@@ -43,43 +42,36 @@ class MainActivity : ComponentActivity() {
                                 isLoggedIn = true
                                 isRegistering = false
                                 selectedTab = 0
+                                selectedActivityId = null
                             },
-                            onNavigateToLogin = {
-                                isRegistering = false
-                            }
+                            onNavigateToLogin = { isRegistering = false }
                         )
                     } else {
                         LoginScreen(
                             onLoginSuccess = {
                                 isLoggedIn = true
                                 selectedTab = 0
+                                selectedActivityId = null
                             },
-                            onNavigateToRegister = {
-                                isRegistering = true
-                            }
+                            onNavigateToRegister = { isRegistering = true }
                         )
                     }
                 } else {
                     if (selectedActivityId != null) {
                         ActivityDetailsScreen(
                             activityId = selectedActivityId!!,
-                            onBack = {
-                                selectedActivityId = null
-                            }
+                            onBack = { selectedActivityId = null }
                         )
                     } else {
                         Scaffold(
                             topBar = {
                                 CenterAlignedTopAppBar(
-                                    title = { Text("Mini Strava") },
-                                    actions = {
-                                        IconButton(onClick = {
-                                            UserSession.token = null
-                                            isLoggedIn = false
-                                            isRegistering = false
-                                            Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
-                                        }) {
-                                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")
+                                    title = {
+                                        when(selectedTab) {
+                                            0 -> Text("Moje Treningi")
+                                            1 -> Text("Rejestracja")
+                                            2 -> Text("Mój Profil")
+                                            else -> Text("Mini Strava")
                                         }
                                     }
                                 )
@@ -87,29 +79,42 @@ class MainActivity : ComponentActivity() {
                             bottomBar = {
                                 NavigationBar {
                                     NavigationBarItem(
-                                        icon = { Icon(Icons.Default.Home, "Start") },
+                                        icon = { Icon(Icons.Default.Home, null) },
                                         label = { Text("Treningi") },
                                         selected = selectedTab == 0,
                                         onClick = { selectedTab = 0 }
                                     )
                                     NavigationBarItem(
-                                        icon = { Icon(Icons.Default.Place, "Mapa") },
+                                        icon = { Icon(Icons.Default.Place, null) },
                                         label = { Text("Nagraj") },
                                         selected = selectedTab == 1,
                                         onClick = { selectedTab = 1 }
+                                    )
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Person, null) },
+                                        label = { Text("Profil") },
+                                        selected = selectedTab == 2,
+                                        onClick = { selectedTab = 2 }
                                     )
                                 }
                             }
                         ) { innerPadding ->
                             Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-                                if (selectedTab == 0) {
-                                    ActivitiesListScreen(
+                                when (selectedTab) {
+                                    0 -> ActivitiesListScreen(
                                         onActivityClick = { clickedId ->
                                             selectedActivityId = clickedId
                                         }
                                     )
-                                } else {
-                                    MapScreen()
+                                    1 -> MapScreen()
+                                    2 -> ProfileScreen(
+                                        onLogout = {
+                                            UserSession.token = null
+                                            UserSession.userId = null
+                                            isLoggedIn = false
+                                            Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
                                 }
                             }
                         }
