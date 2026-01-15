@@ -71,7 +71,6 @@ fun MapScreen() {
 
     val locationManager = remember { context.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
     var mapView by remember { mutableStateOf<MapView?>(null) }
-
     var currentPolyline by remember { mutableStateOf<Polyline?>(null) }
     var startNewSegment by remember { mutableStateOf(true) }
     var lastValidLocation by remember { mutableStateOf<Location?>(null) }
@@ -103,44 +102,41 @@ fun MapScreen() {
     val locationListener = remember {
         object : LocationListener {
             override fun onLocationChanged(location: Location) {
-                if (isRecording && !isPaused) {
-                    if (location.accuracy > 50) return
+                if (!isRecording || isPaused) return
+                if (location.accuracy > 50) return
 
-                    val lat = location.latitude
-                    val lon = location.longitude
-                    val geoPoint = GeoPoint(lat, lon)
+                val lat = location.latitude
+                val lon = location.longitude
+                val geoPoint = GeoPoint(lat, lon)
 
-                    val nowStr = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        java.time.Instant.now().toString()
-                    } else { java.util.Date().toString() }
+                val nowStr = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    java.time.Instant.now().toString()
+                } else { java.util.Date().toString() }
 
-                    trackData.add(TrackPoint(lat, lon, timestamp = nowStr))
+                trackData.add(TrackPoint(lat, lon, timestamp = nowStr))
 
-                    if (startNewSegment) {
-                        val newLine = Polyline().apply {
-                            outlinePaint.color = android.graphics.Color.RED
-                            outlinePaint.strokeWidth = 15f
-                        }
-                        newLine.addPoint(geoPoint)
-                        mapView?.overlays?.add(newLine)
-                        currentPolyline = newLine
-
-                        startNewSegment = false
-                        lastValidLocation = location
-                        mapView?.invalidate()
-                    } else {
-                        currentPolyline?.addPoint(geoPoint)
-
-                        lastValidLocation?.let { last ->
-                            val dist = last.distanceTo(location)
-                            currentDistanceKm += (dist / 1000.0)
-                        }
-                        lastValidLocation = location
-                        mapView?.invalidate()
+                if (startNewSegment) {
+                    val newLine = Polyline().apply {
+                        outlinePaint.color = android.graphics.Color.RED
+                        outlinePaint.strokeWidth = 15f
                     }
+                    newLine.addPoint(geoPoint)
+                    mapView?.overlays?.add(newLine)
+                    currentPolyline = newLine
 
-                    mapView?.controller?.animateTo(geoPoint)
+                    startNewSegment = false
+                    lastValidLocation = location
+                } else {
+                    currentPolyline?.addPoint(geoPoint)
+
+                    lastValidLocation?.let { last ->
+                        val dist = last.distanceTo(location)
+                        currentDistanceKm += (dist / 1000.0)
+                    }
+                    lastValidLocation = location
                 }
+                mapView?.invalidate()
+                mapView?.controller?.animateTo(geoPoint)
             }
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         }
@@ -171,7 +167,6 @@ fun MapScreen() {
 
         startNewSegment = true
         currentPolyline = null
-
         isRecording = true
         isPaused = false
 
@@ -181,9 +176,6 @@ fun MapScreen() {
 
     fun stopAndPauseAction() {
         isPaused = true
-        try {
-            locationManager.removeUpdates(locationListener)
-        } catch (e: Exception) { e.printStackTrace() }
         showSaveDialog = true
     }
 
@@ -191,8 +183,10 @@ fun MapScreen() {
         if (!hasPermission) return
         isPaused = false
         showSaveDialog = false
+
         startNewSegment = true
         lastValidLocation = null
+
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 2f, locationListener)
     }
 
@@ -206,6 +200,7 @@ fun MapScreen() {
         currentDurationStr = "00:00"
         lastValidLocation = null
 
+        locationManager.removeUpdates(locationListener)
         mapView?.overlays?.removeIf { it is Polyline }
         mapView?.invalidate()
         Toast.makeText(context, "Trening odrzucony", Toast.LENGTH_SHORT).show()
@@ -284,7 +279,6 @@ fun MapScreen() {
                     overlays.add(locationOverlay)
 
                     keepScreenOn = true
-
                     mapView = this
                 }
             }
@@ -408,19 +402,14 @@ fun SaveActivityDialog(
             }
         },
         confirmButton = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Button(
+                onClick = {
+                    val finalName = if (name.isBlank()) "Trening" else name
+                    onSave(finalName, selectedType, note)
+                },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
-                    onClick = {
-                        val finalName = if (name.isBlank()) "Trening" else name
-                        onSave(finalName, selectedType, note)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Zapisz")
-                }
+                Text("Zapisz")
             }
         },
         dismissButton = {

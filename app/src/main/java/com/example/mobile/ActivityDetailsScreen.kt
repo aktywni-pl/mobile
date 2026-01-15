@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -114,7 +112,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                 if (trackPoints.isNotEmpty()) {
                                     val startGeo = GeoPoint(trackPoints.first().lat, trackPoints.first().lon)
 
-                                    // Ustawiamy styl linii
                                     fun createPolyline(): Polyline {
                                         return Polyline().apply {
                                             outlinePaint.color = android.graphics.Color.parseColor("#FF5722")
@@ -195,7 +192,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                // Czas
                                 val totalSeconds = (act.duration_min * 60).toLong()
                                 val mm = totalSeconds / 60
                                 val ss = totalSeconds % 60
@@ -207,7 +203,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                     value = timeStr
                                 )
 
-                                // Tempo
                                 val paceStr = if (act.distance_km > 0.05) {
                                     val totalSec = act.duration_min * 60
                                     val paceSec = totalSec / act.distance_km
