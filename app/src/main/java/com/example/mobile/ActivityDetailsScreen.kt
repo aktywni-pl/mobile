@@ -1,14 +1,24 @@
 package com.example.mobile
 
+import android.graphics.Paint
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,6 +29,7 @@ import com.example.mobile.network.TrackPoint
 import com.example.mobile.network.UserSession
 import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 
@@ -26,11 +37,8 @@ import org.osmdroid.views.overlay.Polyline
 @Composable
 fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
-
     var activity by remember { mutableStateOf<Activity?>(null) }
-
     var trackPoints by remember { mutableStateOf<List<TrackPoint>>(emptyList()) }
-
     var isLoading by remember { mutableStateOf(true) }
 
     BackHandler { onBack() }
@@ -41,7 +49,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                 val token = UserSession.token
                 if (token != null) {
                     activity = RetrofitInstance.api.getActivity("Bearer $token", activityId)
-
                     try {
                         val trackResponse = RetrofitInstance.api.getActivityTrack("Bearer $token", activityId)
                         trackPoints = trackResponse.points
@@ -60,42 +67,59 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(activity?.name ?: "Szczegóły") },
+                title = {
+                    Column {
+                        Text(activity?.name ?: "Szczegóły", style = MaterialTheme.typography.titleMedium)
+                        activity?.started_at?.take(10)?.let { date ->
+                            Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Wróć")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.shadow(4.dp)
             )
         }
     ) { padding ->
         if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else {
             activity?.let { act ->
                 Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(0.65f)
+                            .fillMaxWidth()
+                    ) {
                         AndroidView(
                             factory = { ctx ->
                                 MapView(ctx).apply {
                                     setMultiTouchControls(true)
+                                    zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                                 }
                             },
                             update = { map ->
                                 map.overlays.clear()
-
                                 if (trackPoints.isNotEmpty()) {
                                     val geoPoints = trackPoints.map { GeoPoint(it.lat, it.lon) }
 
                                     val line = Polyline()
                                     line.setPoints(geoPoints)
-                                    line.outlinePaint.color = android.graphics.Color.RED
-                                    line.outlinePaint.strokeWidth = 15f
+                                    line.outlinePaint.color = android.graphics.Color.parseColor("#FF5722")
+                                    line.outlinePaint.strokeWidth = 12f
+                                    line.outlinePaint.strokeJoin = Paint.Join.ROUND
+                                    line.outlinePaint.strokeCap = Paint.Cap.ROUND
                                     map.overlays.add(line)
-
 
                                     map.post {
                                         if (geoPoints.isNotEmpty()) {
@@ -110,39 +134,78 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                         )
                     }
 
-                    Column(
+                    Surface(
                         modifier = Modifier
-                            .weight(1f)
-                            .background(Color.White)
-                            .padding(16.dp)
+                            .weight(0.45f)
+                            .fillMaxWidth()
+                            .shadow(16.dp, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 4.dp
                     ) {
-                        Text(text = "Data: ${act.started_at.take(10)}", color = Color.Gray)
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            verticalArrangement = Arrangement.SpaceAround
+                        ) {
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            StatTile("Dystans", String.format("%.2f km", act.distance_km))
+                            // Główny licznik (Dystans) - Centrowany
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "DYSTANS",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color.Gray,
+                                    letterSpacing = 2.sp
+                                )
+                                Text(
+                                    text = String.format("%.2f km", act.distance_km),
+                                    style = MaterialTheme.typography.displayMedium, // Bardzo duża czcionka
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                            val totalSeconds = (act.duration_min * 60).toLong()
-                            val mm = totalSeconds / 60
-                            val ss = totalSeconds % 60
-                            StatTile("Czas", String.format("%d:%02d", mm, ss))
+                            Divider(color = Color.LightGray.copy(alpha = 0.3f))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                // Czas
+                                val totalSeconds = (act.duration_min * 60).toLong()
+                                val mm = totalSeconds / 60
+                                val ss = totalSeconds % 60
+                                val timeStr = String.format("%d:%02d", mm, ss)
+
+                                DetailStatItem(
+                                    icon = Icons.Default.Timer,
+                                    label = "CZAS",
+                                    value = timeStr
+                                )
+
+                                // Tempo
+                                val paceStr = if (act.distance_km > 0.05) {
+                                    val totalSec = act.duration_min * 60
+                                    val paceSec = totalSec / act.distance_km
+                                    val pMin = (paceSec / 60).toInt()
+                                    val pSec = (paceSec % 60).toInt()
+                                    String.format("%d:%02d", pMin, pSec)
+                                } else "--:--"
+
+                                DetailStatItem(
+                                    icon = Icons.Default.Speed,
+                                    label = "TEMPO /KM",
+                                    value = paceStr
+                                )
+                            }
                         }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        val paceStr = if (act.distance_km > 0.05) {
-                            val totalSec = act.duration_min * 60
-                            val paceSec = totalSec / act.distance_km
-                            val pMin = (paceSec / 60).toInt()
-                            val pSec = (paceSec % 60).toInt()
-                            String.format("%d:%02d /km", pMin, pSec)
-                        } else "--:--"
-
-                        Text("Średnie Tempo", color = Color.Gray, fontSize = 12.sp)
-                        Text(paceStr, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-            } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Nie udało się pobrać danych.")
             }
         }
@@ -150,9 +213,24 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
 }
 
 @Composable
-fun StatTile(label: String, value: String) {
-    Column {
-        Text(text = label, fontSize = 12.sp, color = Color.Gray)
-        Text(text = value, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+fun DetailStatItem(icon: ImageVector, label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Gray
+        )
     }
 }
