@@ -32,6 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
@@ -242,6 +243,7 @@ fun MapScreen() {
             factory = { ctx ->
                 MapView(ctx).apply {
                     setMultiTouchControls(true)
+                    zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                     controller.setZoom(18.0)
                     val startPoint = GeoPoint(51.2070, 16.1553)
                     controller.setCenter(startPoint)
