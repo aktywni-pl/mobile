@@ -11,21 +11,35 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import com.example.mobile.network.CreateActivityRequest
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.TrackPoint
+import com.example.mobile.network.TrackRequest
 import com.example.mobile.network.UserSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -45,37 +59,41 @@ fun MapScreen() {
     val scope = rememberCoroutineScope()
 
     var isRecording by remember { mutableStateOf(false) }
-    var routePoints = remember { mutableStateListOf<GeoPoint>() }
+    var isPaused by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+
     var trackData = remember { mutableStateListOf<TrackPoint>() }
 
     var currentDistanceKm by remember { mutableStateOf(0.0) }
     var currentDurationStr by remember { mutableStateOf("00:00") }
     var currentPaceStr by remember { mutableStateOf("--:--") }
-
-    var runStartTime by remember { mutableStateOf<java.time.Instant?>(null) }
+    var totalSeconds by remember { mutableStateOf(0L) }
 
     val locationManager = remember { context.getSystemService(Context.LOCATION_SERVICE) as LocationManager }
     var mapView by remember { mutableStateOf<MapView?>(null) }
+    var currentPolyline by remember { mutableStateOf<Polyline?>(null) }
+    var startNewSegment by remember { mutableStateOf(true) }
+    var lastValidLocation by remember { mutableStateOf<Location?>(null) }
 
-    LaunchedEffect(isRecording, runStartTime) {
-        if (isRecording && runStartTime != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            while (isRecording) {
-                val now = java.time.Instant.now()
-                val durationSeconds = java.time.Duration.between(runStartTime, now).seconds
+    LaunchedEffect(isRecording, isPaused) {
+        if (isRecording && !isPaused) {
+            val startTime = System.currentTimeMillis() - (totalSeconds * 1000)
+            while (isRecording && !isPaused) {
+                val now = System.currentTimeMillis()
+                totalSeconds = (now - startTime) / 1000
 
-                val mm = durationSeconds / 60
-                val ss = durationSeconds % 60
+                val mm = totalSeconds / 60
+                val ss = totalSeconds % 60
                 currentDurationStr = String.format("%02d:%02d", mm, ss)
 
                 if (currentDistanceKm > 0.05) {
-                    val paceSeconds = durationSeconds / currentDistanceKm
+                    val paceSeconds = totalSeconds / currentDistanceKm
                     val paceMin = (paceSeconds / 60).toInt()
                     val paceSec = (paceSeconds % 60).toInt()
                     currentPaceStr = String.format("%d:%02d /km", paceMin, paceSec)
                 } else {
                     currentPaceStr = "--:--"
                 }
-
                 delay(1000L)
             }
         }
@@ -84,45 +102,41 @@ fun MapScreen() {
     val locationListener = remember {
         object : LocationListener {
             override fun onLocationChanged(location: Location) {
-                if (isRecording) {
-                    val lat = location.latitude
-                    val lon = location.longitude
+                if (!isRecording || isPaused) return
+                if (location.accuracy > 50) return
 
-                    if (lat == 0.0 && lon == 0.0) return
+                val lat = location.latitude
+                val lon = location.longitude
+                val geoPoint = GeoPoint(lat, lon)
 
-                    val geoPoint = GeoPoint(lat, lon)
-                    val nowStr = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                        java.time.Instant.now().toString()
-                    } else { java.util.Date().toString() }
+                val nowStr = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    java.time.Instant.now().toString()
+                } else { java.util.Date().toString() }
 
-                    routePoints.add(geoPoint)
-                    trackData.add(TrackPoint(lat, lon, timestamp = nowStr))
+                trackData.add(TrackPoint(lat, lon, timestamp = nowStr))
 
-                    var distMeters = 0.0
-                    if (trackData.size > 1) {
-                        for (i in 0 until trackData.size - 1) {
-                            val p1 = trackData[i]
-                            val p2 = trackData[i+1]
-                            val res = FloatArray(1)
-                            android.location.Location.distanceBetween(p1.lat, p1.lon, p2.lat, p2.lon, res)
-                            distMeters += res[0]
-                        }
+                if (startNewSegment) {
+                    val newLine = Polyline().apply {
+                        outlinePaint.color = android.graphics.Color.RED
+                        outlinePaint.strokeWidth = 15f
                     }
-                    currentDistanceKm = distMeters / 1000.0
+                    newLine.addPoint(geoPoint)
+                    mapView?.overlays?.add(newLine)
+                    currentPolyline = newLine
 
-                    mapView?.overlays?.filterIsInstance<Polyline>()?.firstOrNull()?.let { line ->
-                        line.addPoint(geoPoint)
-                    } ?: run {
-                        val line = Polyline()
-                        line.outlinePaint.color = android.graphics.Color.RED
-                        line.outlinePaint.strokeWidth = 15f
-                        line.addPoint(geoPoint)
-                        mapView?.overlays?.add(line)
+                    startNewSegment = false
+                    lastValidLocation = location
+                } else {
+                    currentPolyline?.addPoint(geoPoint)
+
+                    lastValidLocation?.let { last ->
+                        val dist = last.distanceTo(location)
+                        currentDistanceKm += (dist / 1000.0)
                     }
-
-                    mapView?.controller?.animateTo(geoPoint)
-                    mapView?.invalidate()
+                    lastValidLocation = location
                 }
+                mapView?.invalidate()
+                mapView?.controller?.animateTo(geoPoint)
             }
             override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
         }
@@ -141,59 +155,80 @@ fun MapScreen() {
             permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             return
         }
-        routePoints.clear()
         trackData.clear()
         currentDistanceKm = 0.0
         currentDurationStr = "00:00"
         currentPaceStr = "--:--"
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            runStartTime = java.time.Instant.now()
-        }
+        totalSeconds = 0L
+        lastValidLocation = null
 
         mapView?.overlays?.removeIf { it is Polyline }
         mapView?.invalidate()
 
+        startNewSegment = true
+        currentPolyline = null
         isRecording = true
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 5f, locationListener)
+        isPaused = false
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 2f, locationListener)
         Toast.makeText(context, "Start!", Toast.LENGTH_SHORT).show()
     }
 
-    fun stopAndSave() {
+    fun stopAndPauseAction() {
+        isPaused = true
+        showSaveDialog = true
+    }
+
+    fun resumeRecording() {
+        if (!hasPermission) return
+        isPaused = false
+        showSaveDialog = false
+
+        startNewSegment = true
+        lastValidLocation = null
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 2f, locationListener)
+    }
+
+    fun discardRecording() {
         isRecording = false
-        try {
-            locationManager.removeUpdates(locationListener)
-        } catch (e: Exception) { e.printStackTrace() }
+        isPaused = false
+        showSaveDialog = false
+        totalSeconds = 0L
+        trackData.clear()
+        currentDistanceKm = 0.0
+        currentDurationStr = "00:00"
+        lastValidLocation = null
 
-        val pointCount = trackData.size
+        locationManager.removeUpdates(locationListener)
+        mapView?.overlays?.removeIf { it is Polyline }
+        mapView?.invalidate()
+        Toast.makeText(context, "Trening odrzucony", Toast.LENGTH_SHORT).show()
+    }
+
+    fun finishAndUpload(name: String, type: String, note: String) {
         val distanceInKm = currentDistanceKm
+        val durationMinutes = totalSeconds / 60.0
 
-        var durationSecondsTotal = 0L
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && runStartTime != null) {
-            val now = java.time.Instant.now()
-            durationSecondsTotal = java.time.Duration.between(runStartTime, now).seconds
-        }
-
-        val durationMinutes = durationSecondsTotal / 60.0
-
-        if (pointCount < 2) {
+        if (trackData.size < 2) {
             Toast.makeText(context, "Za mało danych GPS.", Toast.LENGTH_SHORT).show()
-            isRecording = false
-            runStartTime = null
             return
         }
 
         Toast.makeText(context, "Wysyłanie...", Toast.LENGTH_SHORT).show()
+        showSaveDialog = false
 
         scope.launch {
             try {
                 val token = UserSession.token ?: return@launch
                 val startIso = trackData.firstOrNull()?.timestamp ?: java.time.Instant.now().toString()
 
-                val createReq = com.example.mobile.network.CreateActivityRequest(
-                    user_id = UserSession.userId ?: 1,
-                    name = "Trening Mobile",
-                    type = "run",
+                val finalName = if (note.isNotBlank()) "$name - $note" else name
+
+                val createReq = CreateActivityRequest(
+                    user_id = UserSession.userId ?: 0,
+                    name = finalName,
+                    type = type,
                     started_at = startIso,
                     distance_km = distanceInKm,
                     duration_min = durationMinutes
@@ -202,35 +237,25 @@ fun MapScreen() {
                 val createdActivity = RetrofitInstance.api.createActivity("Bearer $token", createReq)
                 val activityId = createdActivity.id
 
-                val requestBody = com.example.mobile.network.TrackRequest(points = trackData)
+                val requestBody = TrackRequest(points = trackData)
                 RetrofitInstance.api.uploadTrack("Bearer $token", activityId, requestBody)
 
                 withContext(Dispatchers.Main) {
-                    val mm = durationSecondsTotal / 60
-                    val ss = durationSecondsTotal % 60
+                    val mm = totalSeconds / 60
+                    val ss = totalSeconds % 60
                     val timeReadable = String.format("%02d:%02d", mm, ss)
-
                     val distStr = String.format("%.2f", distanceInKm)
 
                     Toast.makeText(context, "Zapisano! $distStr km | Czas: $timeReadable", Toast.LENGTH_LONG).show()
-
-                    trackData.clear()
-                    routePoints.clear()
-                    currentDistanceKm = 0.0
-                    currentDurationStr = "00:00"
-                    currentPaceStr = "--:--"
-                    runStartTime = null
-
-                    mapView?.overlays?.removeIf { it is Polyline }
-                    mapView?.invalidate()
+                    discardRecording()
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Błąd: ${e.message}", Toast.LENGTH_LONG).show()
-                    isRecording = false
-                    runStartTime = null
+                    isPaused = true
+                    showSaveDialog = true
                 }
             }
         }
@@ -253,6 +278,7 @@ fun MapScreen() {
                     locationOverlay.enableFollowLocation()
                     overlays.add(locationOverlay)
 
+                    keepScreenOn = true
                     mapView = this
                 }
             }
@@ -300,14 +326,124 @@ fun MapScreen() {
                     Text("START")
                 }
             } else {
-                Button(
-                    onClick = { stopAndSave() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                FloatingActionButton(
+                    onClick = { stopAndPauseAction() },
+                    containerColor = Color.Red,
+                    modifier = Modifier.size(80.dp).align(Alignment.CenterHorizontally)
                 ) {
-                    Text("STOP (ZAPISZ)")
+                    Icon(Icons.Default.Stop, null, modifier = Modifier.size(40.dp), tint = Color.White)
                 }
             }
         }
+    }
+
+    if (showSaveDialog) {
+        SaveActivityDialog(
+            distanceKm = currentDistanceKm,
+            totalSeconds = totalSeconds,
+            onResume = { resumeRecording() },
+            onDiscard = { discardRecording() },
+            onSave = { name, type, note ->
+                finishAndUpload(name, type, note)
+            }
+        )
+    }
+}
+
+@Composable
+fun SaveActivityDialog(
+    distanceKm: Double,
+    totalSeconds: Long,
+    onResume: () -> Unit,
+    onDiscard: () -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var selectedType by remember { mutableStateOf("run") }
+
+    val mm = totalSeconds / 60
+    val ss = totalSeconds % 60
+    val timeFormatted = String.format("%02d:%02d", mm, ss)
+
+    AlertDialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
+        title = { Text("Trening wstrzymany") },
+        text = {
+            Column {
+                Text("Dystans: ${String.format("%.2f", distanceKm)} km")
+                Text("Czas: $timeFormatted", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("Rodzaj aktywności:", fontSize = 12.sp, color = Color.Gray)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TypeButton(Icons.AutoMirrored.Filled.DirectionsRun, "run", selectedType) { selectedType = "run" }
+                    TypeButton(Icons.AutoMirrored.Filled.DirectionsWalk, "walk", selectedType) { selectedType = "walk" }
+                    TypeButton(Icons.AutoMirrored.Filled.DirectionsBike, "bike", selectedType) { selectedType = "bike" }
+                }
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nazwa (np. Ranny Bieg)") },
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Notatka") },
+                    maxLines = 3
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val finalName = if (name.isBlank()) "Trening" else name
+                    onSave(finalName, selectedType, note)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Zapisz")
+            }
+        },
+        dismissButton = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(onClick = onDiscard) {
+                    Text("Usuń", color = Color.Red)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onResume) {
+                    Text("Wróć do treningu")
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun TypeButton(icon: ImageVector, type: String, selected: String, onClick: () -> Unit) {
+    val isSelected = type == selected
+    val bgColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.LightGray.copy(alpha = 0.3f)
+    val iconColor = if (isSelected) Color.White else Color.Black
+
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .clip(CircleShape)
+            .background(bgColor)
+            .clickable { onClick() }
+            .border(2.dp, if(isSelected) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = null, tint = iconColor)
     }
 }
