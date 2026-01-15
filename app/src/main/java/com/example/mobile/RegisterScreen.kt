@@ -12,13 +12,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mobile.network.LoginRequest
+import com.example.mobile.network.RegisterRequest
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
+fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -35,7 +36,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Mini Strava", fontSize = 32.sp, style = MaterialTheme.typography.titleLarge)
+        Text(text = "Nowe konto", fontSize = 32.sp, style = MaterialTheme.typography.titleLarge)
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -73,37 +74,44 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                         isLoading = true
                         errorMessage = ""
 
-
                         scope.launch {
                             try {
-                                val response = RetrofitInstance.api.login(LoginRequest(email, password))
-
+                                val request = RegisterRequest(email, password)
+                                val response = RetrofitInstance.api.register(request)
 
                                 UserSession.token = response.token
                                 UserSession.userId = response.id
 
-                                Toast.makeText(context, "Zalogowano: ${response.email}", Toast.LENGTH_SHORT).show()
-                                onLoginSuccess()
+                                Toast.makeText(context, "Zarejestrowano pomyślnie!", Toast.LENGTH_SHORT).show()
+                                onRegisterSuccess()
+
+                            } catch (e: HttpException) {
+                                if (e.code() == 409) {
+                                    errorMessage = "Ten email jest już zajęty"
+                                } else {
+                                    val errorBody = e.response()?.errorBody()?.string()
+                                    errorMessage = "Błąd rejestracji: $errorBody"
+                                }
                             } catch (e: Exception) {
-
-                                errorMessage = "Błąd logowania: ${e.message}"
-
+                                errorMessage = "Błąd: ${e.message}"
                             } finally {
                                 isLoading = false
                             }
                         }
                     } else {
-                        errorMessage = "Wprowadź dane!"
+                        errorMessage = "Wypełnij wszystkie pola!"
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Zaloguj się")
+                Text("Zarejestruj się")
             }
         }
 
-        TextButton(onClick = onNavigateToRegister) {
-            Text("Nie masz konta? Zarejestruj się")
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextButton(onClick = onNavigateToLogin) {
+            Text("Masz już konto? Zaloguj się")
         }
     }
 }

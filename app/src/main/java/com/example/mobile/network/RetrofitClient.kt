@@ -14,6 +14,9 @@ interface ApiService {
     @POST("api/login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
+    @POST("api/register")
+    suspend fun register(@Body request: RegisterRequest): RegisterResponse
+
     @GET("api/activities")
     suspend fun getActivities(@Header("Authorization") token: String): List<Activity>
 
