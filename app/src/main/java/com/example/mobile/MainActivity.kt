@@ -23,26 +23,42 @@ import org.osmdroid.config.Configuration
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         Configuration.getInstance().userAgentValue = packageName
 
         setContent {
             MobileTheme {
                 val context = LocalContext.current
+
                 var isLoggedIn by remember { mutableStateOf(false) }
+                var isRegistering by remember { mutableStateOf(false) }
+
                 var selectedActivityId by remember { mutableStateOf<Int?>(null) }
                 var selectedTab by remember { mutableIntStateOf(0) }
 
                 if (!isLoggedIn) {
-                    LoginScreen(
-                        onLoginSuccess = {
-                            isLoggedIn = true
-                            selectedTab = 0
-                            selectedActivityId = null
-                        },
-                        onNavigateToRegister = {
-                            Toast.makeText(context, "Rejestracja wyłączona", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+                    if (isRegistering) {
+                        RegisterScreen(
+                            onRegisterSuccess = {
+                                isLoggedIn = true
+                                isRegistering = false
+                                selectedTab = 0
+                            },
+                            onNavigateToLogin = {
+                                isRegistering = false
+                            }
+                        )
+                    } else {
+                        LoginScreen(
+                            onLoginSuccess = {
+                                isLoggedIn = true
+                                selectedTab = 0
+                            },
+                            onNavigateToRegister = {
+                                isRegistering = true
+                            }
+                        )
+                    }
                 } else {
                     if (selectedActivityId != null) {
                         ActivityDetailsScreen(
@@ -60,6 +76,7 @@ class MainActivity : ComponentActivity() {
                                         IconButton(onClick = {
                                             UserSession.token = null
                                             isLoggedIn = false
+                                            isRegistering = false
                                             Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
                                         }) {
                                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Wyloguj")

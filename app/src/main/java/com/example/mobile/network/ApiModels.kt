@@ -56,3 +56,15 @@ data class TrackResponse(
     val activity_id: Int,
     val points: List<TrackPoint>
 )
+
+data class RegisterRequest(
+    val email: String,
+    val password: String
+)
+
+data class RegisterResponse(
+    val id: Int,
+    val email: String,
+    val role: String,
+    val token: String
+)
