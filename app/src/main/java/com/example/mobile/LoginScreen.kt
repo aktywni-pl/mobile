@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.example.mobile.network.LoginRequest
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
+import com.example.mobile.utils.SessionManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,18 +78,19 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
                         scope.launch {
                             try {
                                 val response = RetrofitInstance.api.login(LoginRequest(email, password))
+                                val sessionManager = SessionManager(context)
 
+                                sessionManager.saveAuthToken(response.token)
+                                sessionManager.saveUserDetails(response.id, email)
 
                                 UserSession.token = response.token
                                 UserSession.userId = response.id
                                 UserSession.email = email
 
-                                Toast.makeText(context, "Zalogowano: ${response.email}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Zalogowano pomyślnie!", Toast.LENGTH_SHORT).show()
                                 onLoginSuccess()
                             } catch (e: Exception) {
-
                                 errorMessage = "Błąd logowania: ${e.message}"
-
                             } finally {
                                 isLoading = false
                             }

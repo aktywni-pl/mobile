@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.mobile.network.UserSession
 import com.example.mobile.ui.theme.MobileTheme
+import com.example.mobile.utils.SessionManager
 import org.osmdroid.config.Configuration
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,12 +29,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             MobileTheme {
                 val context = LocalContext.current
+                val sessionManager = remember { SessionManager(context) }
+                val token = sessionManager.fetchAuthToken()
 
-                var isLoggedIn by remember { mutableStateOf(false) }
+                var isLoggedIn by remember { mutableStateOf(token != null) }
                 var isRegistering by remember { mutableStateOf(false) }
 
                 var selectedActivityId by remember { mutableStateOf<Int?>(null) }
                 var selectedTab by remember { mutableIntStateOf(0) }
+
+                LaunchedEffect(Unit) {
+                    if (token != null) {
+                        UserSession.token = token
+                        UserSession.userId = sessionManager.getUserId()
+                        UserSession.email = sessionManager.getEmail()
+                    }
+                }
 
                 if (!isLoggedIn) {
                     if (isRegistering) {
@@ -69,7 +80,7 @@ class MainActivity : ComponentActivity() {
                                     title = {
                                         when(selectedTab) {
                                             0 -> Text("Moje Treningi")
-                                            1 -> Text("Rejestracja")
+                                            1 -> Text("Nagraj")
                                             2 -> Text("Mój Profil")
                                             else -> Text("Mini Strava")
                                         }
@@ -109,9 +120,12 @@ class MainActivity : ComponentActivity() {
                                     1 -> MapScreen()
                                     2 -> ProfileScreen(
                                         onLogout = {
+                                            sessionManager.clearSession()
                                             UserSession.token = null
                                             UserSession.userId = null
+                                            UserSession.email = null
                                             isLoggedIn = false
+                                            selectedTab = 0
                                             Toast.makeText(context, "Wylogowano", Toast.LENGTH_SHORT).show()
                                         }
                                     )

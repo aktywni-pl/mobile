@@ -13,11 +13,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.mobile.network.Activity
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
+import com.example.mobile.utils.SessionManager
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -31,15 +33,19 @@ fun ActivitiesListScreen(onActivityClick: (Int) -> Unit) {
 
     var selectedType by remember { mutableStateOf<String?>(null) }
     var sortOption by remember { mutableStateOf(SortOption.DATE_DESC) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                val token = UserSession.token
+                val sessionManager = SessionManager(context)
+                val token = UserSession.token ?: sessionManager.fetchAuthToken()
+                val userId = if (UserSession.userId != 0) UserSession.userId else sessionManager.getUserId()
+
                 if (token != null) {
                     val response = RetrofitInstance.api.getActivities("Bearer $token")
-                    val myId = UserSession.userId
-                    allActivities = response.filter { it.user_id == myId }
+
+                    allActivities = response.filter { it.user_id == userId }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -179,9 +185,14 @@ fun ActivityItem(activity: Activity, onClick: () -> Unit) {
             }
 
             Column(horizontalAlignment = Alignment.End) {
-                Text("${String.format(Locale.US, "%.2f", activity.distance_km)} km", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    "${String.format(Locale.US, "%.2f", activity.distance_km)} km",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
 
                 val totalSeconds = (activity.duration_min * 60).toLong()
+
                 val hours = totalSeconds / 3600
                 val minutes = (totalSeconds % 3600) / 60
                 val seconds = totalSeconds % 60
@@ -189,10 +200,10 @@ fun ActivityItem(activity: Activity, onClick: () -> Unit) {
                 val timeString = if (hours > 0) {
                     String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
                 } else {
-                    String.format(Locale.US, "%d:%02d", minutes, seconds)
+                    String.format(Locale.US, "%d:%02d min", minutes, seconds)
                 }
 
-                Text("$timeString min", style = MaterialTheme.typography.bodySmall)
+                Text(timeString, style = MaterialTheme.typography.bodySmall)
             }
         }
     }

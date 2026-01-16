@@ -193,9 +193,15 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 val totalSeconds = (act.duration_min * 60).toLong()
-                                val mm = totalSeconds / 60
+                                val hh = totalSeconds / 3600
+                                val mm = (totalSeconds % 3600) / 60
                                 val ss = totalSeconds % 60
-                                val timeStr = String.format("%d:%02d", mm, ss)
+
+                                val timeStr = if (hh > 0) {
+                                    String.format(java.util.Locale.US, "%d:%02d:%02d", hh, mm, ss)
+                                } else {
+                                    String.format(java.util.Locale.US, "%d:%02d", mm, ss)
+                                }
 
                                 DetailStatItem(
                                     icon = Icons.Default.Timer,
@@ -203,13 +209,16 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                     value = timeStr
                                 )
 
-                                val paceStr = if (act.distance_km > 0.05) {
-                                    val totalSec = act.duration_min * 60
-                                    val paceSec = totalSec / act.distance_km
-                                    val pMin = (paceSec / 60).toInt()
-                                    val pSec = (paceSec % 60).toInt()
-                                    String.format("%d:%02d", pMin, pSec)
-                                } else "--:--"
+                                val paceStr = if (act.distance_km > 0.001) {
+                                    val paceMinPerKm = act.duration_min / act.distance_km
+                                    val paceTotalSeconds = (paceMinPerKm * 60).toLong()
+                                    val pMin = paceTotalSeconds / 60
+                                    val pSec = paceTotalSeconds % 60
+
+                                    if (pMin < 600) String.format(java.util.Locale.US, "%d:%02d", pMin, pSec) else "--:--"
+                                } else {
+                                    "--:--"
+                                }
 
                                 DetailStatItem(
                                     icon = Icons.Default.Speed,

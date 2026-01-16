@@ -103,7 +103,7 @@ fun MapScreen() {
         object : LocationListener {
             override fun onLocationChanged(location: Location) {
                 if (!isRecording || isPaused) return
-                if (location.accuracy > 50) return
+                if (location.accuracy > 200) return
 
                 val lat = location.latitude
                 val lon = location.longitude
@@ -190,7 +190,7 @@ fun MapScreen() {
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 2f, locationListener)
     }
 
-    fun discardRecording() {
+    fun discardRecording(showMessage: Boolean = true) {
         isRecording = false
         isPaused = false
         showSaveDialog = false
@@ -203,7 +203,10 @@ fun MapScreen() {
         locationManager.removeUpdates(locationListener)
         mapView?.overlays?.removeIf { it is Polyline }
         mapView?.invalidate()
-        Toast.makeText(context, "Trening odrzucony", Toast.LENGTH_SHORT).show()
+
+        if (showMessage) {
+            Toast.makeText(context, "Trening odrzucony", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun finishAndUpload(name: String, type: String, note: String) {
@@ -247,13 +250,15 @@ fun MapScreen() {
                     val distStr = String.format("%.2f", distanceInKm)
 
                     Toast.makeText(context, "Zapisano! $distStr km | Czas: $timeReadable", Toast.LENGTH_LONG).show()
-                    discardRecording()
+
+                    discardRecording(showMessage = false)
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Błąd: ${e.message}", Toast.LENGTH_LONG).show()
+
                     isPaused = true
                     showSaveDialog = true
                 }
@@ -342,7 +347,7 @@ fun MapScreen() {
             distanceKm = currentDistanceKm,
             totalSeconds = totalSeconds,
             onResume = { resumeRecording() },
-            onDiscard = { discardRecording() },
+            onDiscard = { discardRecording(showMessage = true) },
             onSave = { name, type, note ->
                 finishAndUpload(name, type, note)
             }
