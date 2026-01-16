@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import com.example.mobile.network.RegisterRequest
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
+import com.example.mobile.utils.SessionManager
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 
@@ -68,8 +69,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
             label = { Text("Powtórz hasło") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = password.isNotEmpty() && confirmPassword.isNotEmpty() && password != confirmPassword
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
 
         if (errorMessage.isNotEmpty()) {
@@ -84,7 +84,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
             Button(
                 onClick = {
                     if (email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-
                         if (password == confirmPassword) {
                             isLoading = true
                             errorMessage = ""
@@ -94,12 +93,21 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
                                     val request = RegisterRequest(email, password, confirmPassword)
                                     val response = RetrofitInstance.api.register(request)
 
-                                    UserSession.token = response.token
-                                    UserSession.userId = response.id
-                                    UserSession.email = email
+                                    if (response.token != null) {
+                                        val sessionManager = SessionManager(context)
+                                        sessionManager.saveAuthToken(response.token)
+                                        sessionManager.saveUserDetails(response.id, email)
 
-                                    Toast.makeText(context, "Zarejestrowano pomyślnie!", Toast.LENGTH_SHORT).show()
-                                    onRegisterSuccess()
+                                        UserSession.token = response.token
+                                        UserSession.userId = response.id
+                                        UserSession.email = email
+
+                                        Toast.makeText(context, "Zarejestrowano pomyślnie!", Toast.LENGTH_SHORT).show()
+                                        onRegisterSuccess()
+                                    } else {
+                                        Toast.makeText(context, "Konto utworzone! Zaloguj się.", Toast.LENGTH_LONG).show()
+                                        onNavigateToLogin()
+                                    }
 
                                 } catch (e: HttpException) {
                                     isLoading = false
@@ -114,7 +122,7 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
                                 }
                             }
                         } else {
-                            errorMessage = "Hasła nie są identyczne!"
+                            errorMessage = "Hasła muszą być takie same!"
                         }
                     } else {
                         errorMessage = "Wypełnij wszystkie pola!"
@@ -125,8 +133,6 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
                 Text("Zarejestruj się")
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = onNavigateToLogin) {
             Text("Masz już konto? Zaloguj się")

@@ -65,7 +65,7 @@ data class RegisterRequest(
 
 data class RegisterResponse(
     val id: Int,
+    val username: String,
     val email: String,
-    val role: String,
-    val token: String
+    val token: String?
 )

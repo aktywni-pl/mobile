@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.example.mobile.network.Activity
 import com.example.mobile.network.RetrofitInstance
 import com.example.mobile.network.UserSession
+import com.example.mobile.utils.SessionManager
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -27,10 +28,11 @@ import java.util.Locale
 fun ProfileScreen(onLogout: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val sessionManager = remember { SessionManager(context) }
 
     var activities by remember { mutableStateOf<List<Activity>>(emptyList()) }
     var totalKm by remember { mutableStateOf(0.0) }
-    var totalTimeHours by remember { mutableStateOf(0.0) }
+    var totalTimeString by remember { mutableStateOf("00:00") }
     var activitiesCount by remember { mutableStateOf(0) }
 
     var firstName by remember { mutableStateOf("") }
@@ -39,7 +41,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
     var height by remember { mutableStateOf("180") }
     var isEditing by remember { mutableStateOf(false) }
 
-    val userEmail = UserSession.email ?: "uzytkownik"
+    val userEmail = UserSession.email ?: sessionManager.getEmail() ?: "uzytkownik"
     val nick = userEmail.substringBefore("@").replaceFirstChar {
         if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
     }
@@ -47,19 +49,29 @@ fun ProfileScreen(onLogout: () -> Unit) {
     LaunchedEffect(Unit) {
         scope.launch {
             try {
-                val token = UserSession.token
-                val currentUserId = UserSession.userId
+                val token = UserSession.token ?: sessionManager.fetchAuthToken()
+                val currentUserId = if (UserSession.userId != 0) UserSession.userId else sessionManager.getUserId()
 
-                if (token != null && currentUserId != null) {
+                if (token != null && currentUserId != -1) {
                     val all = RetrofitInstance.api.getActivities("Bearer $token")
-
                     val myActivities = all.filter { it.user_id == currentUserId }
-                    activities = myActivities
 
-                    totalKm = myActivities.sumOf { it.distance_km }
-                    val totalMinutes = myActivities.sumOf { it.duration_min }
-                    totalTimeHours = totalMinutes / 60.0
+                    activities = myActivities
                     activitiesCount = myActivities.size
+                    totalKm = myActivities.sumOf { it.distance_km }
+
+                    val totalMinutesVal = myActivities.sumOf { it.duration_min }
+                    val totalSeconds = (totalMinutesVal * 60).toInt()
+
+                    val hours = totalSeconds / 3600
+                    val minutes = (totalSeconds % 3600) / 60
+                    val seconds = totalSeconds % 60
+
+                    totalTimeString = if (hours > 0) {
+                        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
+                    } else {
+                        String.format(Locale.US, "%02d:%02d", minutes, seconds)
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -111,7 +123,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
             ) {
                 StatItem(label = "Aktywności", value = activitiesCount.toString())
                 StatItem(label = "Dystans (km)", value = String.format(Locale.US, "%.1f", totalKm))
-                StatItem(label = "Czas (h)", value = String.format(Locale.US, "%.1f", totalTimeHours))
+                StatItem(label = "Czas", value = totalTimeString)
             }
         }
 
@@ -188,7 +200,10 @@ fun ProfileScreen(onLogout: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onLogout,
+            onClick = {
+                sessionManager.clearSession()
+                onLogout()
+            },
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
             modifier = Modifier.fillMaxWidth()
         ) {
