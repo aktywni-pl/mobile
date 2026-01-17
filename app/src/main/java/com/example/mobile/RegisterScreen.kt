@@ -96,7 +96,8 @@ fun RegisterScreen(onRegisterSuccess: () -> Unit, onNavigateToLogin: () -> Unit)
                                     if (response.token != null) {
                                         val sessionManager = SessionManager(context)
                                         sessionManager.saveAuthToken(response.token)
-                                        sessionManager.saveUserDetails(response.id, email)
+                                        sessionManager.saveUserId(response.id)
+                                        sessionManager.saveEmail(email)
 
                                         UserSession.token = response.token
                                         UserSession.userId = response.id
