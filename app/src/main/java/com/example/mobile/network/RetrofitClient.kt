@@ -2,7 +2,9 @@ package com.example.mobile.network
 
 
 import okhttp3.OkHttpClient
+import okhttp3.ResponseBody
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
@@ -35,6 +37,16 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: Int
     ): TrackResponse
+
+    @GET("api/profile")
+    suspend fun getProfile(@Header("Authorization") token: String): ProfileResponse
+
+
+    @PUT("api/profile")
+    suspend fun updateProfile(
+        @Header("Authorization") token: String,
+        @Body request: UpdateProfileRequest
+    ): Response<ResponseBody>
 
     @POST("api/activities")
     suspend fun createActivity(

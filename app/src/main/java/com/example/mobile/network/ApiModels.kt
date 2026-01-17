@@ -69,3 +69,26 @@ data class RegisterResponse(
     val email: String,
     val token: String?
 )
+
+data class ProfileResponse(
+    val user_id: Int,
+    val exists: Boolean,
+    val profile: UserProfile?
+)
+
+data class UserProfile(
+    val first_name: String,
+    val last_name: String,
+    val birth_date: String?,
+    val gender: String?,
+    val height_cm: Int?,
+    val weight_kg: Double?,
+    val avatar: String? = null
+)
+
+data class UpdateProfileRequest(
+    val first_name: String,
+    val last_name: String,
+    val city: String = "",
+    val bio: String = ""
+)
