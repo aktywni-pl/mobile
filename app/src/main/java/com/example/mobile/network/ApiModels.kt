@@ -89,6 +89,10 @@ data class UserProfile(
 data class UpdateProfileRequest(
     val first_name: String,
     val last_name: String,
-    val city: String = "",
-    val bio: String = ""
+    val birth_date: String? = null,
+    val gender: String? = null,
+    val height_cm: Int? = null,
+    val weight_kg: Double? = null,
+    val city: String? = "",
+    val bio: String? = ""
 )
