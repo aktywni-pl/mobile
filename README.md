@@ -23,8 +23,8 @@ Aktywni-pl to trzy podzielone repozytoria.
 1. [✅]Użytkownik może pobrać aplikację na systemy Android lub iOS.
 2. [✅]Użytkownik może zarejestrować konto i zalogować się w aplikacji.
 3. []Użytkownik może zresetować swoje hasło (np. gdy zapomni hasła).
-4. [➖]Użytkownik po zalogowaniu może ustawić swoje dane profilowe takie jak: imię, nazwisko,
-   data urodzenia, płeć, wzrost, waga i avatar. (Dodane, ale brak tabeli w bazie)
+4. [✅]Użytkownik po zalogowaniu może ustawić swoje dane profilowe takie jak: imię, nazwisko,
+   data urodzenia, płeć, wzrost, waga i avatar. (imię, nazwisko).
 5. [✅]Po zalogowaniu użytkownik może rozpocząć nową aktywność, pauzować i zakończyć ją
    oraz zapisać dane.
 6. [✅]W trakcie aktywności aplikacja rejestruje czas, dystans, tempo, prędkość i ślad GPS.
