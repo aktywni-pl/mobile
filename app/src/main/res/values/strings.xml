@@ -1,3 +1,47 @@
 <resources>
     <string name="app_name">Aktywni</string>
+
+    <string name="nav_feed">Tablica</string>
+    <string name="nav_map">Mapa</string>
+    <string name="nav_profile">Profil</string>
+
+    <string name="error_fetch_data">Nie udało się pobrać danych.</string>
+    <string name="server_error">Błąd serwera</string>
+    <string name="conn_error">Błąd połączenia</string>
+    <string name="back">Wróć</string>
+
+    <string name="profile_activities">Aktywności</string>
+    <string name="profile_distance">Dystans (km)</string>
+    <string name="profile_time">Czas</string>
+    <string name="profile_header">Dane profilowe</string>
+    <string name="profile_edit">Edytuj</string>
+    <string name="label_name">Imię</string>
+    <string name="label_surname">Nazwisko</string>
+    <string name="label_birthdate">Data urodzenia</string>
+    <string name="label_gender">Płeć</string>
+    <string name="gender_male">Mężczyzna</string>
+    <string name="gender_female">Kobieta</string>
+    <string name="label_weight">Waga (kg)</string>
+    <string name="label_height">Wzrost (cm)</string>
+    <string name="btn_save">ZAPISZ ZMIANY</string>
+    <string name="btn_logout">Wyloguj się</string>
+    <string name="msg_name_req">Imię i nazwisko są wymagane!</string>
+    <string name="msg_saved">Zapisano zmiany!</string>
+
+    <string name="feed_you">TY</string>
+    <string name="feed_user">Użytkownik</string>
+    <string name="feed_friend">(Znajomy)</string>
+    <string name="feed_report">Zgłoś</string>
+    <string name="feed_reported">Zgłoszono użytkownika.</string>
+    <string name="feed_kudos">Kudos</string>
+    <string name="feed_comment">Skomentuj</string>
+    <string name="feed_comment_added">Komentarz dodany!</string>
+    <string name="feed_own_kudos">To Twój trening</string>
+
+    <string name="details_title">Szczegóły</string>
+    <string name="stat_dist">DYSTANS</string>
+    <string name="stat_time">CZAS</string>
+    <string name="stat_pace">TEMPO /KM</string>
+    <string name="map_start">Start</string>
+    <string name="map_meta">Meta</string>
 </resources>

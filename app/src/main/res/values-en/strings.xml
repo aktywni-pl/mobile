@@ -1,0 +1,47 @@
+<resources>
+    <string name="app_name">Aktywni</string>
+
+    <string name="nav_feed">Feed</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_profile">Profile</string>
+
+    <string name="error_fetch_data">Failed to fetch data.</string>
+    <string name="server_error">Server error</string>
+    <string name="conn_error">Connection error</string>
+    <string name="back">Back</string>
+
+    <string name="profile_activities">Activities</string>
+    <string name="profile_distance">Distance (km)</string>
+    <string name="profile_time">Time</string>
+    <string name="profile_header">Profile details</string>
+    <string name="profile_edit">Edit</string>
+    <string name="label_name">Name</string>
+    <string name="label_surname">Surname</string>
+    <string name="label_birthdate">Birth date</string>
+    <string name="label_gender">Gender</string>
+    <string name="gender_male">Male</string>
+    <string name="gender_female">Female</string>
+    <string name="label_weight">Weight (kg)</string>
+    <string name="label_height">Height (cm)</string>
+    <string name="btn_save">SAVE CHANGES</string>
+    <string name="btn_logout">Log out</string>
+    <string name="msg_name_req">Name and surname are required!</string>
+    <string name="msg_saved">Changes saved!</string>
+
+    <string name="feed_you">YOU</string>
+    <string name="feed_user">User</string>
+    <string name="feed_friend">(Friend)</string>
+    <string name="feed_report">Report</string>
+    <string name="feed_reported">User reported.</string>
+    <string name="feed_kudos">Kudos</string>
+    <string name="feed_comment">Comment</string>
+    <string name="feed_comment_added">Comment added!</string>
+    <string name="feed_own_kudos">It\'s your activity</string>
+
+    <string name="details_title">Details</string>
+    <string name="stat_dist">DISTANCE</string>
+    <string name="stat_time">TIME</string>
+    <string name="stat_pace">PACE /KM</string>
+    <string name="map_start">Start</string>
+    <string name="map_meta">Finish</string>
+</resources>
