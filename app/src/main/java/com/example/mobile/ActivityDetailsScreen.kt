@@ -30,6 +30,7 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Polyline
+import org.osmdroid.views.overlay.Marker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +128,6 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                     for (i in 0 until trackPoints.size - 1) {
                                         val p1 = trackPoints[i]
                                         val p2 = trackPoints[i+1]
-
                                         val g1 = GeoPoint(p1.lat, p1.lon)
                                         val g2 = GeoPoint(p2.lat, p2.lon)
 
@@ -140,6 +140,32 @@ fun ActivityDetailsScreen(activityId: Int, onBack: () -> Unit) {
                                         }
                                     }
                                     map.overlays.add(currentPolyline)
+
+
+                                    val startMarker = Marker(map)
+                                    startMarker.position = startGeo
+                                    startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                    startMarker.title = "Start"
+
+                                    val startIcon = androidx.core.content.ContextCompat.getDrawable(map.context, org.osmdroid.library.R.drawable.marker_default)?.mutate()
+                                    startIcon?.setTint(android.graphics.Color.parseColor("#4CAF50"))
+                                    startMarker.icon = startIcon
+                                    map.overlays.add(startMarker)
+
+                                    if (trackPoints.size > 1) {
+                                        val endGeo = GeoPoint(trackPoints.last().lat, trackPoints.last().lon)
+                                        val endMarker = Marker(map)
+                                        endMarker.position = endGeo
+                                        endMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                                        endMarker.title = "Meta"
+
+                                        val endIcon = androidx.core.content.ContextCompat.getDrawable(map.context, org.osmdroid.library.R.drawable.marker_default)?.mutate()
+                                        endIcon?.setTint(android.graphics.Color.RED)
+                                        endMarker.icon = endIcon
+                                        map.overlays.add(endMarker)
+                                    }
+
+
 
                                     map.post {
                                         map.controller.setZoom(16.0)
