@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -81,7 +82,8 @@ class MainActivity : ComponentActivity() {
                                         when(selectedTab) {
                                             0 -> Text("Moje Treningi")
                                             1 -> Text("Nagraj")
-                                            2 -> Text("Mój Profil")
+                                            2 -> Text("Społeczność")
+                                            3 -> Text("Mój Profil")
                                             else -> Text("Mini Strava")
                                         }
                                     }
@@ -102,10 +104,16 @@ class MainActivity : ComponentActivity() {
                                         onClick = { selectedTab = 1 }
                                     )
                                     NavigationBarItem(
-                                        icon = { Icon(Icons.Default.Person, null) },
-                                        label = { Text("Profil") },
+                                        icon = { Icon(Icons.Default.Star, null) },
+                                        label = { Text("Ranking") },
                                         selected = selectedTab == 2,
                                         onClick = { selectedTab = 2 }
+                                    )
+                                    NavigationBarItem(
+                                        icon = { Icon(Icons.Default.Person, null) },
+                                        label = { Text("Profil") },
+                                        selected = selectedTab == 3,
+                                        onClick = { selectedTab = 3 }
                                     )
                                 }
                             }
@@ -118,7 +126,8 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
                                     1 -> MapScreen()
-                                    2 -> ProfileScreen(
+                                    2 -> SocialScreen()
+                                    3 -> ProfileScreen(
                                         onLogout = {
                                             sessionManager.clearSession()
                                             UserSession.token = null
