@@ -71,4 +71,24 @@ class SessionManager(context: Context) {
     fun clearSession() {
         prefs.edit().clear().apply()
     }
+
+    fun saveFriend(friendId: Int) {
+        val currentFriends = getFriends().toMutableSet()
+        currentFriends.add(friendId.toString())
+        prefs.edit().putStringSet("saved_friends_ids", currentFriends).apply()
+    }
+
+    fun removeFriend(friendId: Int) {
+        val currentFriends = getFriends().toMutableSet()
+        currentFriends.remove(friendId.toString())
+        prefs.edit().putStringSet("saved_friends_ids", currentFriends).apply()
+    }
+
+    fun getFriends(): Set<String> {
+        return prefs.getStringSet("saved_friends_ids", emptySet()) ?: emptySet()
+    }
+
+    fun isFriend(friendId: Int): Boolean {
+        return getFriends().contains(friendId.toString())
+    }
 }

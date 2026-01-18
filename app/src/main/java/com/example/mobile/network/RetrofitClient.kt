@@ -41,6 +41,9 @@ interface ApiService {
     @GET("api/profile")
     suspend fun getProfile(@Header("Authorization") token: String): ProfileResponse
 
+    @GET("api/feed")
+    suspend fun getFeed(@Header("Authorization") token: String): List<Activity>
+
 
     @PUT("api/profile")
     suspend fun updateProfile(
