@@ -36,7 +36,7 @@ fun LoginScreen(onLoginSuccess: () -> Unit, onNavigateToRegister: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Mini Strava", fontSize = 32.sp, style = MaterialTheme.typography.titleLarge)
+        Text(text = "Aktywni", fontSize = 32.sp, style = MaterialTheme.typography.titleLarge)
 
         Spacer(modifier = Modifier.height(32.dp))
 
