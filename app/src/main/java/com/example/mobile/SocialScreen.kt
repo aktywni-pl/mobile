@@ -155,6 +155,17 @@ fun ActivityItemSocial(activity: Activity, myId: Int, myEmail: String, isFriend:
     val userName = if (isMe) "TY ($myEmail)" else "Użytkownik #${activity.user_id}"
     val userColor = if (isMe) MaterialTheme.colorScheme.primary else if (isFriend) Color(0xFF4CAF50) else Color.Gray
 
+    val totalSeconds = (activity.duration_min * 60).toLong()
+    val hh = totalSeconds / 3600
+    val mm = (totalSeconds % 3600) / 60
+    val ss = totalSeconds % 60
+
+    val timeString = if (hh > 0) {
+        String.format(java.util.Locale.US, "%d:%02d:%02d", hh, mm, ss)
+    } else {
+        String.format(java.util.Locale.US, "%d:%02d", mm, ss)
+    }
+
     if (showCommentDialog) {
         CommentDialog(
             onDismiss = { showCommentDialog = false },
@@ -168,7 +179,8 @@ fun ActivityItemSocial(activity: Activity, myId: Int, myEmail: String, isFriend:
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.padding(bottom = 16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -212,10 +224,11 @@ fun ActivityItemSocial(activity: Activity, myId: Int, myEmail: String, isFriend:
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
+
             Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                Text("${activity.distance_km} km", fontWeight = FontWeight.Bold)
+                Text(String.format("%.2f km", activity.distance_km), fontWeight = FontWeight.Bold)
                 Text(" • ")
-                Text("${activity.duration_min} min")
+                Text(timeString)
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.surfaceVariant)
